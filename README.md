@@ -17,14 +17,14 @@ and contributing is a real path (signed publish, or a pull request), not a reque
 dsh plugin --profile web add github:okayiris/registry-plugin
 ```
 
-then add the loader row to the profile's `cordis.patch.yml` (or let your setup do it):
+The plugin ships its own bundle patch, so the loader row comes with it. Yours to change is the config:
 
 ```yaml
 - insert:
     - id: okayiris-registry
       name: 'dsh-okayiris-registry'
       config:
-        profile: web                 # which profile the MCP entries go into
+        patchFile: ''                # which patch file the MCP entries go into ('' = ~/.dsh/mcp.yml)
         house: dj947                 # optional: this house's name, for a signed publish
         keyEnv: IRIS_PLUG_KEY        # where the house key lives (a reference, never a key)
         githubTokenEnv: GITHUB_TOKEN # optional: to contribute as a pull request

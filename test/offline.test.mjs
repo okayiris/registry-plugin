@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -69,18 +69,30 @@ test('a stdio entry names the command in the package, and a reference, never a v
   assert.ok(http.includes('transport: streamable-http') && http.includes('url: "https://mcp.example.com/gh"'));
 });
 
-test('an install with a wrong hash writes nothing', async () => {
+test('an install lands in the house and is recorded', async () => {
   const home = await mkdtemp(join(tmpdir(), 'reg-home-'));
   process.env.DSH_HOME = home;
   const pkg = { meta: { name: 'dutch-tax', version: '1.0.0', author: 'a', license: 'CC-BY-4.0' },
     files: { 'SKILL.md': b64('---\nname: dutch-tax\n---\n\nhi\n') }, hash: 'not-the-hash' };
-  // installSkill itself trusts its caller to have checked; fetchPackage is what refuses. Here we check that
-  // the file work stays inside the house.
+  // installSkill itself trusts its caller to have checked (fetchPackage is what refuses a bad hash); here we
+  // check that the file work stays inside the house and that what it installed is written down.
   const done = await installSkill(pkg);
   assert.equal(done.dir, join(home, 'skills', 'dutch-tax'));
   assert.ok(existsSync(join(home, 'skills', 'dutch-tax', 'SKILL.md')));
   const state = await readState();
   assert.equal(state.skills['dutch-tax'].version, '1.0.0');
+  await rm(home, { recursive: true, force: true });
+  delete process.env.DSH_HOME;
+});
+
+test('the default patch file is the one a house loads (~/.dsh/mcp.yml)', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'reg-home-'));
+  process.env.DSH_HOME = home;
+  const pkg = { meta: { name: 'plain', version: '1.0.0', author: 'a', license: 'MIT', transport: 'streamable-http', url: 'https://x.example/mcp', permissions: [] },
+    files: { 'mcp.json': b64('{"name":"plain"}') }, hash: 'h' };
+  const done = await installMcp(pkg, { acknowledged: [] });
+  assert.equal(done.patch, join(home, 'mcp.yml'));
+  assert.ok(readFileSync(done.patch, 'utf8').includes('mcp-plain'));
   await rm(home, { recursive: true, force: true });
   delete process.env.DSH_HOME;
 });
@@ -93,10 +105,10 @@ test('an mcp server is not registered until its permissions are acknowledged', a
   const pkg = { meta: { name: 'things', version: '1.0.0', author: 'a', license: 'MIT', transport: 'stdio', command: 'server.py', permissions: ['internet', 'secrets'] },
     files: { 'mcp.json': b64('{"name":"things"}'), 'server.py': b64('#!/usr/bin/env python3\n') }, hash: 'h' };
 
-  await assert.rejects(() => installMcp(pkg, { profile: 'web', acknowledged: [] }), /asks for internet, secrets/u);
+  await assert.rejects(() => installMcp(pkg, { patchFile: 'web', acknowledged: [] }), /asks for internet, secrets/u);
   assert.ok(!existsSync(join(home, 'registry', 'mcp', 'things')), 'nothing was written');
 
-  const done = await installMcp(pkg, { profile: 'web', acknowledged: ['internet', 'secrets'] });
+  const done = await installMcp(pkg, { patchFile: 'web', acknowledged: ['internet', 'secrets'] });
   const patch = await readFile(join(home, 'profiles', 'web', 'cordis.patch.yml'), 'utf8');
   assert.ok(patch.startsWith('- id: connection'), 'the profile patch file is otherwise untouched');
   assert.deepEqual(patchNames(patch), ['things']);

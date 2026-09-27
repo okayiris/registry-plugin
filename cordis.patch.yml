@@ -1,0 +1,14 @@
+# dsh-okayiris-registry bundle patch: the loader row for this plugin.
+#
+# The config here is the default; a profile can override it by id in its own patch file
+# (- id: okayiris-registry / config: ...), which is how a house sets its own name and key.
+- insert:
+    - id: okayiris-registry
+      name: 'dsh-okayiris-registry'
+      config:
+        # Where the MCP loader entries go: the file a house's start loads with --patch. Change it to a
+        # profile name (patchFile: web) if this machine keeps its rows in the profile's own patch file.
+        patchFile: ''
+        keyEnv: IRIS_PLUG_KEY
+        githubTokenEnv: GITHUB_TOKEN
+        repo: okayiris/registry
