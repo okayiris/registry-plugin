@@ -1,0 +1,28 @@
+{
+  "name": "dsh-okayiris-registry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read, install and contribute to the shared Iris registries: skills (text an assistant reads) and MCP servers (tools an assistant can use), from skills.okayiris.com and mcp.okayiris.com.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/registry.js",
+    "SKILL.md",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.6"
+  },
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "license": "MIT",
+  "dsh": {
+    "plugin": "okayiris-registry"
+  }
+}
