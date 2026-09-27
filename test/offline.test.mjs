@@ -12,8 +12,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import {
-  forgetMcp, installMcp, installSkill, localPackage, mergePatch, packageDiff, packageHash, patchEntry, patchNames,
-  readFolder, readState, search, secretHits, submissionText,
+  forgetMcp, forgetSubmission, installMcp, installSkill, localPackage, mergePatch, packageDiff, packageHash,
+  patchEntry, patchNames, readFolder, readState, recordSubmission, search, secretHits, submissionText,
+  waitingSubmission,
 } from '../lib/registry.js';
 
 const b64 = (text) => Buffer.from(text, 'utf8').toString('base64');
@@ -173,4 +174,19 @@ test('the local package reads a folder the way the registry holds it', async () 
   assert.equal(files['SKILL.md'], b64('hello'));
   assert.deepEqual(await localPackage(join(dir, 'nope')), {});
   await rm(dir, { recursive: true, force: true });
+});
+
+test('the house remembers what it submitted, and forgets it again', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'reg-sub-'));
+  process.env.DSH_HOME = home;
+  assert.equal(await waitingSubmission('skill', 'e2e-door'), null, 'nothing is waiting to start with');
+  await recordSubmission('skill', 'e2e-door', '1.0.0', 'abc');
+  const known = await waitingSubmission('skill', 'e2e-door');
+  assert.equal(known.version, '1.0.0');
+  assert.equal((await readState()).submitted['skill/e2e-door'].hash, 'abc');
+  await forgetSubmission('skill', 'e2e-door');
+  assert.equal(await waitingSubmission('skill', 'e2e-door'), null, 'and it is forgotten after the withdrawal');
+  await forgetSubmission('skill', 'never-there');   // forgetting what is not there is not an error
+  await rm(home, { recursive: true, force: true });
+  delete process.env.DSH_HOME;
 });
