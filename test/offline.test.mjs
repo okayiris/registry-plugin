@@ -12,8 +12,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import {
-  forgetMcp, installMcp, installSkill, mergePatch, packageHash, patchEntry, patchNames, readFolder,
-  readState, search, secretHits, submissionText,
+  forgetMcp, installMcp, installSkill, localPackage, mergePatch, packageDiff, packageHash, patchEntry, patchNames,
+  readFolder, readState, search, secretHits, submissionText,
 } from '../lib/registry.js';
 
 const b64 = (text) => Buffer.from(text, 'utf8').toString('base64');
@@ -149,4 +149,28 @@ test('the contribution text says who made it and where it came from', () => {
   assert.ok(body.includes('Add skill dutch-tax 1.0.0'));
   assert.ok(body.includes('Iris of Anna') && body.includes('https://x.example'));
   assert.ok(body.includes('reviews'));
+});
+
+test('the diff between an installed copy and the published package', () => {
+  const published = { 'SKILL.md': b64('the published text'), 'skill.json': b64('{}') };
+  assert.deepEqual(packageDiff({ ...published }, published).same, true);
+  const edited = packageDiff({ ...published, 'SKILL.md': b64('the published tex!') }, published);
+  assert.deepEqual([edited.changed, edited.missing, edited.extra], [['SKILL.md'], [], []]);
+  const short = packageDiff({ 'SKILL.md': published['SKILL.md'] }, published);
+  assert.deepEqual([short.changed, short.missing], [[], ['skill.json']]);
+  const added = packageDiff({ ...published, 'notes.md': b64('mine') }, published);
+  assert.deepEqual(added.extra, ['notes.md']);
+});
+
+test('the local package reads a folder the way the registry holds it', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'reg-local-'));
+  await writeFile(join(dir, 'SKILL.md'), 'hello');
+  await writeFile(join(dir, '.hidden'), 'not part of a package');
+  await mkdir(join(dir, 'sub'));
+  await writeFile(join(dir, 'sub', 'x.md'), 'nested too');
+  const files = await localPackage(dir);
+  assert.deepEqual(Object.keys(files), ['SKILL.md']);
+  assert.equal(files['SKILL.md'], b64('hello'));
+  assert.deepEqual(await localPackage(join(dir, 'nope')), {});
+  await rm(dir, { recursive: true, force: true });
 });

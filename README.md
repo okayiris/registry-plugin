@@ -49,6 +49,7 @@ be told.
 | `registry_mcp_list` | read | Installed servers, with the `mcp__<name>__` prefix each adds. |
 | `registry_mcp_install` | write | Install a server and register it with the harness. |
 | `registry_mcp_remove` | write | Remove it, and rewrite its neighbours' entries so none is lost. |
+| `registry_verify` | read | Does an installed skill or server still match the published hash? |
 | `registry_contribute` | write | Check a folder and submit it: signed publish, or a pull request. |
 
 ## What it will not do
